@@ -1,0 +1,26 @@
+[workspace]
+resolver = "2"
+members = ["example"]
+
+[workspace.dependencies]
+toml = "0.8.14"
+serde = "1.0.203"
+serde_json = "1.0.117"
+thiserror = "1.0.61"
+ordered_hash_map = { version = "0.4.0", features = ["serde"] }
+
+[package]
+name = "toml_pretty"
+version = "0.1.0"
+edition = "2021"
+authors = ["MoghTech"]
+description = "a function pretty serialize a serde-serializable value to toml"
+repository = "https://github.com/mbecker20/toml_pretty"
+license = "MIT"
+
+[dependencies]
+toml.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+ordered_hash_map.workspace = true
