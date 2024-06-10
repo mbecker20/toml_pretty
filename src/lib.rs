@@ -11,8 +11,6 @@ pub type Result<T> = std::result::Result<T, Error>;
 pub enum Error {
   #[error("Failed to de/serialize value to json")]
   JsonSerialization(#[from] serde_json::Error),
-  #[error("Failed to serialize value to toml")]
-  TomlSerialization(#[from] toml::ser::Error),
   #[error("Failed to format args")]
   Format(#[from] std::fmt::Error),
   #[error("Came across triple nested array. Not supported.")]
