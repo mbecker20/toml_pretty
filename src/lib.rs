@@ -24,6 +24,7 @@ pub struct Options<'a> {
   pub tab: &'a str,
   pub skip_empty_string: bool,
   pub inline_array: bool,
+  pub max_inline_array_length: usize,
 }
 
 impl<'a> Default for Options<'a> {
@@ -32,6 +33,7 @@ impl<'a> Default for Options<'a> {
       tab: "\t",
       skip_empty_string: false,
       inline_array: false,
+      max_inline_array_length: 50,
     }
   }
 }
@@ -54,6 +56,11 @@ impl<'a> Options<'a> {
     self.inline_array = inline_array;
     self
   }
+
+  pub fn max_inline_array_length(mut self, max_inline_array_length: usize) -> Self {
+    self.max_inline_array_length = max_inline_array_length;
+    self
+  }
 }
 
 pub fn to_string<T: Serialize>(value: &T, options: Options<'_>) -> Result<String> {
@@ -61,6 +68,7 @@ pub fn to_string<T: Serialize>(value: &T, options: Options<'_>) -> Result<String
     tab,
     skip_empty_string,
     inline_array,
+    max_inline_array_length,
   } = options;
   let map = serde_json::from_str(&serde_json::to_string(value).map_err(Error::JsonSerialization)?)
     .map_err(Error::JsonSerialization)?;
@@ -148,6 +156,8 @@ pub fn to_string<T: Serialize>(value: &T, options: Options<'_>) -> Result<String
             }
           }
         }
+        let total_length = strs.iter().fold(0, |total, curr| total + curr.len());
+        let inline_array = inline_array || total_length <= max_inline_array_length;
         let join = if inline_array {
           String::from(", ")
         } else {
