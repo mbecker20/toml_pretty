@@ -119,7 +119,7 @@ pub fn to_string<T: Serialize>(value: &T, options: Options<'_>) -> Result<String
               if skip_empty_string && string.is_empty() {
                 continue;
               }
-              strs.push(string.to_owned())
+              strs.push(format!("\"{string}\""))
             }
             Value::Object(map) => strs.push(format!(
               "{{ {} }}",
@@ -133,7 +133,8 @@ pub fn to_string<T: Serialize>(value: &T, options: Options<'_>) -> Result<String
               for val in vals {
                 match val {
                   Value::Null => {}
-                  Value::Bool(_) | Value::Number(_) | Value::String(_) => out.push(val.to_string()),
+                  Value::Bool(_) | Value::Number(_) => out.push(val.to_string()),
+                  Value::String(string) => out.push(format!("\"{string}\"")),
                   Value::Object(map) => out.push(format!(
                     "{{ {} }}",
                     to_string(&map, options)?
