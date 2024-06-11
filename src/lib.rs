@@ -49,7 +49,7 @@ pub fn to_string_custom_tab<T: Serialize>(value: &T, tab: &str) -> Result<String
             .map_err(Error::Format)?;
         } else {
           res
-            .write_fmt(format_args!("{key} = {val}"))
+            .write_fmt(format_args!("{key} = \"{val}\""))
             .map_err(Error::Format)?;
         }
       }
@@ -65,7 +65,8 @@ pub fn to_string_custom_tab<T: Serialize>(value: &T, tab: &str) -> Result<String
         for val in vals {
           match val {
             Value::Null => {}
-            Value::Bool(_) | Value::Number(_) | Value::String(_) => strs.push(val.to_string()),
+            Value::Bool(_) | Value::Number(_) => strs.push(val.to_string()),
+            Value::String(string) => strs.push(string.to_owned()),
             Value::Object(map) => strs.push(format!(
               "{{ {} }}",
               to_string(&map)?.split('\n').collect::<Vec<_>>().join(", ")
