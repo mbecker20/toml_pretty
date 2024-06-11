@@ -36,10 +36,22 @@ pub fn to_string_custom_tab<T: Serialize>(value: &T, tab: &str) -> Result<String
     match &val {
       Value::Null => {}
 
-      Value::Bool(_) | Value::Number(_) | Value::String(_) => {
+      Value::Bool(_) | Value::Number(_) => {
         res
           .write_fmt(format_args!("{key} = {val}"))
           .map_err(Error::Format)?;
+      }
+
+      Value::String(val) => {
+        if val.contains('\n') {
+          res
+            .write_fmt(format_args!("{key} = \"\"\"\n{val}\n\"\"\""))
+            .map_err(Error::Format)?;
+        } else {
+          res
+            .write_fmt(format_args!("{key} = {val}"))
+            .map_err(Error::Format)?;
+        }
       }
 
       Value::Array(vals) => {
@@ -75,7 +87,7 @@ pub fn to_string_custom_tab<T: Serialize>(value: &T, tab: &str) -> Result<String
             }
           }
         }
-				let val = strs.join(&format!(",\n{tab}"));
+        let val = strs.join(&format!(",\n{tab}"));
         res
           .write_fmt(format_args!("{key} = [\n{tab}{val}\n]"))
           .map_err(Error::Format)?;
