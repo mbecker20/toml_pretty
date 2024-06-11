@@ -87,22 +87,19 @@ pub fn to_string<T: Serialize>(value: &T, options: Options<'_>) -> Result<String
       }
 
       Value::String(val) => {
+        if skip_empty_string && val.is_empty() {
+          continue;
+        }
+        if i != 0 {
+          res.push('\n');
+        }
         if val.contains('\n') {
-          if i != 0 {
-            res.push('\n');
-          }
           res
             .write_fmt(format_args!("{key} = \"\"\"\n{val}\"\"\""))
             .map_err(Error::Format)?;
         } else {
-          if skip_empty_string && val.is_empty() {
-            continue;
-          }
-          if i != 0 {
-            res.push('\n');
-          }
           res
-            .write_fmt(format_args!("{key} = \"{val}\""))
+            .write_fmt(format_args!("{key} = \"{}\"", val.replace('"', "\\\"")))
             .map_err(Error::Format)?;
         }
       }
@@ -126,7 +123,7 @@ pub fn to_string<T: Serialize>(value: &T, options: Options<'_>) -> Result<String
               if skip_empty_string && string.is_empty() {
                 continue;
               }
-              strs.push(format!("\"{string}\""))
+              strs.push(format!("\"{}\"", string.replace('"', "\\\"")))
             }
             Value::Object(map) => strs.push(format!(
               "{{ {} }}",
@@ -141,7 +138,7 @@ pub fn to_string<T: Serialize>(value: &T, options: Options<'_>) -> Result<String
                 match val {
                   Value::Null => {}
                   Value::Bool(_) | Value::Number(_) => out.push(val.to_string()),
-                  Value::String(string) => out.push(format!("\"{string}\"")),
+                  Value::String(string) => out.push(format!("\"{}\"", string.replace('"', "\\\""))),
                   Value::Object(map) => out.push(format!(
                     "{{ {} }}",
                     to_string(&map, options.inline_array(true))?
