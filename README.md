@@ -6,8 +6,8 @@ Can serialize structs to toml in a single block (unlike the `toml` crate, which 
 
 Nested array fields more than 2 arrays deep are not supported.
 
-Note. All items in arrays are on a new line and indented. `toml_pretty::to_string` uses `\t` as tab.
-An alternal tab symbol can be used (eg. 2 spaces) using `toml_pretty::to_string_custom_tab`.
+Note. All items in arrays are on a new line and indented. `toml_pretty::to_string` uses `\t` by default as tab.
+An alternal tab symbol can be used (eg. 2 spaces) using the `Options` (shown in example).
 
 ## Example
 
@@ -55,7 +55,7 @@ let user = User {
 };
 println!(
 	"{}",
-	toml_pretty::to_string(&user)
+	toml_pretty::to_string(&user, toml_pretty::Options::builder().tab("  ").build())
 		.context("failed to ser")
 		.unwrap()
 );

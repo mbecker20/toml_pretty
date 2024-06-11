@@ -19,13 +19,59 @@ pub enum Error {
   ObjectReached,
 }
 
-pub fn to_string<T: Serialize>(value: &T) -> Result<String> {
-  to_string_custom_tab(value, "\t")
+#[derive(Clone, Copy)]
+pub struct Options<'a> {
+  pub tab: &'a str,
+  pub skip_empty_string: bool,
 }
 
-/// This function only supports serializable structs, as top level toml
-/// requires a map.
-pub fn to_string_custom_tab<T: Serialize>(value: &T, tab: &str) -> Result<String> {
+impl<'a> Default for Options<'a> {
+  fn default() -> Self {
+    Self {
+      tab: "\t",
+      skip_empty_string: false,
+    }
+  }
+}
+
+impl<'a> Options<'a> {
+  pub fn builder() -> OptionsBuilder<'a> {
+    OptionsBuilder::default()
+  }
+}
+
+#[derive(Default)]
+pub struct OptionsBuilder<'a> {
+  pub tab: Option<&'a str>,
+  pub skip_empty_string: Option<bool>,
+}
+
+impl<'a> OptionsBuilder<'a> {
+  /// Specify the symbol to use for tab. Default is '\t'
+  pub fn tab(mut self, tab: &'a str) -> Self {
+    self.tab = Some(tab);
+    self
+  }
+
+  /// Specify whether skip serializing string fields containing empty strings
+  pub fn skip_empty_string(mut self, skip_empty_string: bool) -> Self {
+    self.skip_empty_string = Some(skip_empty_string);
+    self
+  }
+
+  pub fn build(self) -> Options<'a> {
+    Options {
+      tab: self.tab.unwrap_or("\t"),
+      skip_empty_string: self.skip_empty_string.unwrap_or(false),
+    }
+  }
+}
+
+pub fn to_string<T: Serialize>(value: &T, options: Options<'_>) -> Result<String> {
+  let Options {
+    tab,
+    skip_empty_string,
+  } = options;
   let map = serde_json::from_str(&serde_json::to_string(value).map_err(Error::JsonSerialization)?)
     .map_err(Error::JsonSerialization)?;
   let mut res = String::new();
@@ -48,6 +94,9 @@ pub fn to_string_custom_tab<T: Serialize>(value: &T, tab: &str) -> Result<String
             .write_fmt(format_args!("{key} = \"\"\"\n{val}\n\"\"\""))
             .map_err(Error::Format)?;
         } else {
+          if skip_empty_string && val.is_empty() {
+            continue;
+          }
           res
             .write_fmt(format_args!("{key} = \"{val}\""))
             .map_err(Error::Format)?;
@@ -66,10 +115,18 @@ pub fn to_string_custom_tab<T: Serialize>(value: &T, tab: &str) -> Result<String
           match val {
             Value::Null => {}
             Value::Bool(_) | Value::Number(_) => strs.push(val.to_string()),
-            Value::String(string) => strs.push(string.to_owned()),
+            Value::String(string) => {
+              if skip_empty_string && string.is_empty() {
+                continue;
+              }
+              strs.push(string.to_owned())
+            }
             Value::Object(map) => strs.push(format!(
               "{{ {} }}",
-              to_string(&map)?.split('\n').collect::<Vec<_>>().join(", ")
+              to_string(&map, options)?
+                .split('\n')
+                .collect::<Vec<_>>()
+                .join(", ")
             )),
             Value::Array(vals) => {
               let mut out = Vec::new();
@@ -79,7 +136,10 @@ pub fn to_string_custom_tab<T: Serialize>(value: &T, tab: &str) -> Result<String
                   Value::Bool(_) | Value::Number(_) | Value::String(_) => out.push(val.to_string()),
                   Value::Object(map) => out.push(format!(
                     "{{ {} }}",
-                    to_string(&map)?.split('\n').collect::<Vec<_>>().join(", ")
+                    to_string(&map, options)?
+                      .split('\n')
+                      .collect::<Vec<_>>()
+                      .join(", ")
                   )),
                   Value::Array(_) => return Err(Error::TripleNestedArray),
                 }

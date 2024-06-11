@@ -1,5 +1,6 @@
 use anyhow::Context;
 use serde::Serialize;
+use toml_pretty::Options;
 
 #[derive(Serialize)]
 struct User {
@@ -40,8 +41,11 @@ fn main() {
   };
   println!(
     "{}",
-    toml_pretty::to_string_custom_tab(&user, "  ")
-      .context("failed to ser")
-      .unwrap()
+    toml_pretty::to_string(
+      &user,
+      Options::builder().tab("  ").skip_empty_string(true).build()
+    )
+    .context("failed to ser")
+    .unwrap()
   );
 }
