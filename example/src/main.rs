@@ -41,11 +41,8 @@ fn main() {
   };
   println!(
     "{}",
-    toml_pretty::to_string(
-      &user,
-      Options::builder().tab("  ").skip_empty_string(true).build()
-    )
-    .context("failed to ser")
-    .unwrap()
+    toml_pretty::to_string(&user, Options::default().tab("  ").skip_empty_string(true))
+      .context("failed to ser")
+      .unwrap()
   );
 }

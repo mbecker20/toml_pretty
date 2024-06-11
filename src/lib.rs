@@ -23,6 +23,7 @@ pub enum Error {
 pub struct Options<'a> {
   pub tab: &'a str,
   pub skip_empty_string: bool,
+  pub inline_array: bool,
 }
 
 impl<'a> Default for Options<'a> {
@@ -30,40 +31,28 @@ impl<'a> Default for Options<'a> {
     Self {
       tab: "\t",
       skip_empty_string: false,
+      inline_array: false,
     }
   }
 }
 
 impl<'a> Options<'a> {
-  pub fn builder() -> OptionsBuilder<'a> {
-    OptionsBuilder::default()
-  }
-}
-
-#[derive(Default)]
-pub struct OptionsBuilder<'a> {
-  pub tab: Option<&'a str>,
-  pub skip_empty_string: Option<bool>,
-}
-
-impl<'a> OptionsBuilder<'a> {
   /// Specify the symbol to use for tab. Default is '\t'
   pub fn tab(mut self, tab: &'a str) -> Self {
-    self.tab = Some(tab);
+    self.tab = tab;
     self
   }
 
-  /// Specify whether skip serializing string fields containing empty strings
+  /// Specify whether to skip serializing string fields containing empty strings
   pub fn skip_empty_string(mut self, skip_empty_string: bool) -> Self {
-    self.skip_empty_string = Some(skip_empty_string);
+    self.skip_empty_string = skip_empty_string;
     self
   }
 
-  pub fn build(self) -> Options<'a> {
-    Options {
-      tab: self.tab.unwrap_or("\t"),
-      skip_empty_string: self.skip_empty_string.unwrap_or(false),
-    }
+  /// Specify whether to serialize arrays inline, rather than on multiple lines.
+  pub fn inline_array(mut self, inline_array: bool) -> Self {
+    self.inline_array = inline_array;
+    self
   }
 }
 
@@ -71,6 +60,7 @@ pub fn to_string<T: Serialize>(value: &T, options: Options<'_>) -> Result<String
   let Options {
     tab,
     skip_empty_string,
+    inline_array,
   } = options;
   let map = serde_json::from_str(&serde_json::to_string(value).map_err(Error::JsonSerialization)?)
     .map_err(Error::JsonSerialization)?;
@@ -132,7 +122,7 @@ pub fn to_string<T: Serialize>(value: &T, options: Options<'_>) -> Result<String
             }
             Value::Object(map) => strs.push(format!(
               "{{ {} }}",
-              to_string(&map, options)?
+              to_string(&map, options.inline_array(true))?
                 .split('\n')
                 .collect::<Vec<_>>()
                 .join(", ")
@@ -146,7 +136,7 @@ pub fn to_string<T: Serialize>(value: &T, options: Options<'_>) -> Result<String
                   Value::String(string) => out.push(format!("\"{string}\"")),
                   Value::Object(map) => out.push(format!(
                     "{{ {} }}",
-                    to_string(&map, options)?
+                    to_string(&map, options.inline_array(true))?
                       .split('\n')
                       .collect::<Vec<_>>()
                       .join(", ")
@@ -158,13 +148,24 @@ pub fn to_string<T: Serialize>(value: &T, options: Options<'_>) -> Result<String
             }
           }
         }
-        let val = strs.join(&format!(",\n{tab}"));
+        let join = if inline_array {
+          String::from(", ")
+        } else {
+          format!(",\n{tab}")
+        };
+        let val = strs.join(&join);
         if i != 0 {
           res.push('\n');
         }
-        res
-          .write_fmt(format_args!("{key} = [\n{tab}{val}\n]"))
-          .map_err(Error::Format)?;
+        if inline_array {
+          res
+            .write_fmt(format_args!("{key} = [{val}]"))
+            .map_err(Error::Format)?;
+        } else {
+          res
+            .write_fmt(format_args!("{key} = [\n{tab}{val}\n]"))
+            .map_err(Error::Format)?;
+        }
       }
 
       // All objects should be removed by flatten_map

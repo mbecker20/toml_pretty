@@ -55,8 +55,8 @@ let user = User {
 };
 println!(
 	"{}",
-	toml_pretty::to_string(&user, toml_pretty::Options::builder().tab("  ").build())
-		.context("failed to ser")
+	toml_pretty::to_string(&user, toml_pretty::Options::default().tab("  "))
+		.context("failed to serialize user pretty")
 		.unwrap()
 );
 ```
