@@ -91,7 +91,7 @@ pub fn to_string<T: Serialize>(value: &T, options: Options<'_>) -> Result<String
       Value::String(val) => {
         if val.contains('\n') {
           res
-            .write_fmt(format_args!("{key} = \"\"\"\n{val}\n\"\"\""))
+            .write_fmt(format_args!("{key} = \"\"\"\n{val}\"\"\""))
             .map_err(Error::Format)?;
         } else {
           if skip_empty_string && val.is_empty() {

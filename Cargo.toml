@@ -10,7 +10,7 @@ ordered_hash_map = { version = "0.4.0", features = ["serde"] }
 
 [package]
 name = "toml_pretty"
-version = "1.0.1"
+version = "1.0.2"
 edition = "2021"
 authors = ["MoghTech"]
 description = "a function to pretty serialize a serde-serializable value to toml"
