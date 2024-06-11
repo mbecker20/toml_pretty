@@ -76,13 +76,13 @@ pub fn to_string<T: Serialize>(value: &T, options: Options<'_>) -> Result<String
     .map_err(Error::JsonSerialization)?;
   let mut res = String::new();
   for (i, (key, val)) in flatten_map(map).into_iter().enumerate() {
-    if i != 0 {
-      res.push('\n');
-    }
     match &val {
       Value::Null => {}
 
       Value::Bool(_) | Value::Number(_) => {
+        if i != 0 {
+          res.push('\n');
+        }
         res
           .write_fmt(format_args!("{key} = {val}"))
           .map_err(Error::Format)?;
@@ -90,12 +90,18 @@ pub fn to_string<T: Serialize>(value: &T, options: Options<'_>) -> Result<String
 
       Value::String(val) => {
         if val.contains('\n') {
+          if i != 0 {
+            res.push('\n');
+          }
           res
             .write_fmt(format_args!("{key} = \"\"\"\n{val}\"\"\""))
             .map_err(Error::Format)?;
         } else {
           if skip_empty_string && val.is_empty() {
             continue;
+          }
+          if i != 0 {
+            res.push('\n');
           }
           res
             .write_fmt(format_args!("{key} = \"{val}\""))
@@ -105,6 +111,9 @@ pub fn to_string<T: Serialize>(value: &T, options: Options<'_>) -> Result<String
 
       Value::Array(vals) => {
         if vals.is_empty() {
+          if i != 0 {
+            res.push('\n');
+          }
           res
             .write_fmt(format_args!("{key} = []"))
             .map_err(Error::Format)?;
@@ -150,6 +159,9 @@ pub fn to_string<T: Serialize>(value: &T, options: Options<'_>) -> Result<String
           }
         }
         let val = strs.join(&format!(",\n{tab}"));
+        if i != 0 {
+          res.push('\n');
+        }
         res
           .write_fmt(format_args!("{key} = [\n{tab}{val}\n]"))
           .map_err(Error::Format)?;
