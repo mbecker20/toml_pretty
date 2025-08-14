@@ -3,14 +3,14 @@ resolver = "2"
 members = ["example"]
 
 [workspace.dependencies]
-serde = "1.0.203"
-serde_json = "1.0.117"
-thiserror = "1.0.61"
-ordered_hash_map = { version = "0.4.0", features = ["serde"] }
+serde = "1.0"
+serde_json = "1.0"
+thiserror = "2.0"
+ordered_hash_map = { version = "0.4", features = ["serde"] }
 
 [package]
 name = "toml_pretty"
-version = "1.1.2"
+version = "1.2.0"
 edition = "2021"
 authors = ["MoghTech"]
 description = "a function to pretty serialize a serde-serializable value to toml"

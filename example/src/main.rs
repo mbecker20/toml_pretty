@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use anyhow::Context;
 use serde::Serialize;
 use toml_pretty::Options;
@@ -8,6 +10,7 @@ struct User {
   nicknames: Vec<String>,
   birthday: Birthday,
   more: Vec<Birthday>,
+  empty: HashMap<String, String>,
 }
 
 #[derive(Serialize)]
@@ -38,11 +41,18 @@ fn main() {
         year: 1980,
       },
     ],
+    empty: HashMap::new(),
   };
   println!(
     "{}",
-    toml_pretty::to_string(&user, Options::default().tab("  ").skip_empty_string(true))
-      .context("failed to ser")
-      .unwrap()
+    toml_pretty::to_string(
+      &user,
+      Options::default()
+        .tab("  ")
+        .skip_empty_string(true)
+        .skip_empty_object(false)
+    )
+    .context("failed to ser")
+    .unwrap()
   );
 }

@@ -23,6 +23,7 @@ pub enum Error {
 pub struct Options<'a> {
   pub tab: &'a str,
   pub skip_empty_string: bool,
+  pub skip_empty_object: bool,
   pub inline_array: bool,
   pub max_inline_array_length: usize,
 }
@@ -32,6 +33,7 @@ impl<'a> Default for Options<'a> {
     Self {
       tab: "\t",
       skip_empty_string: false,
+      skip_empty_object: false,
       inline_array: false,
       max_inline_array_length: 50,
     }
@@ -51,6 +53,12 @@ impl<'a> Options<'a> {
     self
   }
 
+  /// Specify whether to skip serializing object fields containing empty objects
+  pub fn skip_empty_object(mut self, skip_empty_object: bool) -> Self {
+    self.skip_empty_object = skip_empty_object;
+    self
+  }
+
   /// Specify whether to serialize arrays inline, rather than on multiple lines.
   pub fn inline_array(mut self, inline_array: bool) -> Self {
     self.inline_array = inline_array;
@@ -67,13 +75,14 @@ pub fn to_string<T: Serialize>(value: &T, options: Options<'_>) -> Result<String
   let Options {
     tab,
     skip_empty_string,
+    skip_empty_object,
     inline_array,
     max_inline_array_length,
   } = options;
   let map = serde_json::from_str(&serde_json::to_string(value).map_err(Error::JsonSerialization)?)
     .map_err(Error::JsonSerialization)?;
   let mut res = String::new();
-  for (i, (key, val)) in flatten_map(map).into_iter().enumerate() {
+  for (i, (key, val)) in flatten_map(map, skip_empty_object).into_iter().enumerate() {
     match &val {
       Value::Null => {}
 
@@ -175,16 +184,30 @@ pub fn to_string<T: Serialize>(value: &T, options: Options<'_>) -> Result<String
         }
       }
 
-      // All objects should be removed by flatten_map
+      // Special Object case for including empty objects
+      Value::Object(obj) if !skip_empty_object && obj.is_empty() => {
+        if i != 0 {
+          res.push('\n');
+        }
+        // Write empty object eg 'database = {}'
+        res
+          .write_fmt(format_args!("{key} = {{}}"))
+          .map_err(Error::Format)?;
+      }
+
+      // All other object cases should be removed by flatten_map
       Value::Object(_) => return Err(Error::ObjectReached),
     }
   }
   Ok(res)
 }
 
-fn flatten_map(map: OrderedHashMap<String, Value>) -> OrderedHashMap<String, Value> {
+fn flatten_map(
+  map: OrderedHashMap<String, Value>,
+  skip_empty_object: bool,
+) -> OrderedHashMap<String, Value> {
   let mut target = OrderedHashMap::new();
-  flatten_map_rec(&mut target, None, map);
+  flatten_map_rec(&mut target, None, map, skip_empty_object);
   target
 }
 
@@ -192,24 +215,33 @@ fn flatten_map_rec(
   target: &mut OrderedHashMap<String, Value>,
   parent_field: Option<String>,
   source: OrderedHashMap<String, Value>,
+  skip_empty_object: bool,
 ) {
-  let parent_field = match parent_field {
-    Some(mut parent_field) => {
-      parent_field.push('.');
-      parent_field
+  if !skip_empty_object && source.is_empty() {
+    if let Some(parent_field) = &parent_field {
+      target.insert(
+        parent_field.to_string(),
+        Value::Object(serde_json::Map::new()),
+      );
+      return;
     }
-    None => String::new(),
-  };
+  }
   for (field, val) in source {
-    let parent_field = if parent_field.is_empty() {
-      field
-    } else {
+    let parent_field = if let Some(parent_field) = &parent_field {
       let mut parent_field = parent_field.clone();
+      parent_field.push('.');
       parent_field.push_str(&field);
       parent_field
+    } else {
+      field
     };
     if let Value::Object(source) = val {
-      flatten_map_rec(target, Some(parent_field), source.into_iter().collect())
+      flatten_map_rec(
+        target,
+        Some(parent_field),
+        source.into_iter().collect(),
+        skip_empty_object,
+      )
     } else {
       target.insert(parent_field, val);
     }
