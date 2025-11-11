@@ -18,6 +18,8 @@ struct Birthday {
   day: u8,
   month: u8,
   year: u16,
+  message: Option<String>,
+  tags: Vec<&'static str>,
 }
 
 fn main() {
@@ -28,17 +30,27 @@ fn main() {
       day: 0,
       month: 0,
       year: 1980,
+      message: None,
+      tags: vec!["asdf", "asdf", "asdf"],
     },
     more: vec![
       Birthday {
         day: 0,
         month: 0,
         year: 1980,
+        message: None,
+        tags: vec!["asdf", "asdf", "asdf", "asdf", "asdf", "asdf", "asdf", "asdf", "asdf", "asdf", "asdf", "asdf"],
       },
       Birthday {
         day: 0,
         month: 0,
         year: 1980,
+        message: Some(String::from(
+          r#"asdf
+asdf
+asdf"#,
+        )),
+        tags: vec!["asdf", "asdf", "asdf"],
       },
     ],
     empty: HashMap::new(),

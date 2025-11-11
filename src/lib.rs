@@ -134,13 +134,7 @@ pub fn to_string<T: Serialize>(value: &T, options: Options<'_>) -> Result<String
               }
               strs.push(format!("\"{}\"", string.replace('"', "\\\"")))
             }
-            Value::Object(map) => strs.push(format!(
-              "{{ {} }}",
-              to_string(&map, options.inline_array(true))?
-                .split('\n')
-                .collect::<Vec<_>>()
-                .join(", ")
-            )),
+            Value::Object(map) => strs.push(to_array_object_string(&map, options)?),
             Value::Array(vals) => {
               let mut out = Vec::new();
               for val in vals {
@@ -148,13 +142,7 @@ pub fn to_string<T: Serialize>(value: &T, options: Options<'_>) -> Result<String
                   Value::Null => {}
                   Value::Bool(_) | Value::Number(_) => out.push(val.to_string()),
                   Value::String(string) => out.push(format!("\"{}\"", string.replace('"', "\\\""))),
-                  Value::Object(map) => out.push(format!(
-                    "{{ {} }}",
-                    to_string(&map, options.inline_array(true))?
-                      .split('\n')
-                      .collect::<Vec<_>>()
-                      .join(", ")
-                  )),
+                  Value::Object(map) => out.push(to_array_object_string(&map, options)?),
                   Value::Array(_) => return Err(Error::TripleNestedArray),
                 }
               }
@@ -248,10 +236,41 @@ fn flatten_map_rec(
   }
 }
 
-// Flattens a nested bson document using the mongo '.' syntax. Useful for partial updates.
-// doc! { "f1": "yes", "f2": { "f3": "no" } } -> doc! { "f1": "yes", "f2.f3": "no" }
-// pub fn flatten_document(doc: Document) -> Document {
-//   let mut target = Document::new();
-//   flatten_document_rec(&mut target, None, doc);
-//   target
-// }
+/// Serializes to:
+///
+/// ```toml
+/// { name = "asdf", pattern = """
+/// asdf
+/// bbbb""", last = true }
+/// ```
+fn to_array_object_string(
+  map: &serde_json::Map<String, Value>,
+  options: Options<'_>,
+) -> Result<String> {
+  let mut res = String::new();
+  for token in to_string(&map, options.inline_array(true))?
+    .split(" = ")
+    .map(str::trim)
+  {
+    // Split into val / next key, if exists
+    match token.rsplit_once('\n') {
+      Some((val, next_key)) => {
+        res.push_str(" = ");
+        res.push_str(val.trim());
+        res.push_str(", ");
+        res.push_str(next_key.trim());
+      }
+      None => {
+        if res.is_empty() {
+          // first key
+          res.push_str(token);
+        } else {
+          // last val
+          res.push_str(" = ");
+          res.push_str(token);
+        }
+      }
+    }
+  }
+  Ok(format!("{{ {res} }}"))
+}
